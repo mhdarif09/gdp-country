@@ -7,7 +7,7 @@ from sklearn.metrics import mean_squared_error
 import math
 from pathlib import Path
 
-# Set the title and favicon that appear in the Browser's tab bar.
+# Set page config
 st.set_page_config(
     page_title='GDP Dashboard with Predictions',
     page_icon=':earth_americas:',
@@ -62,11 +62,14 @@ selected_countries = st.multiselect(
 min_year = gdp_df['Year'].min()
 max_year = gdp_df['Year'].max()
 
+# Display max_year to ensure correct value
+st.write(f"Max year in dataset: {max_year}")
+
 from_year, to_year = st.slider(
     'Select year range:',
-    min_value=min_year,
-    max_value=max_year,
-    value=[min_year, max_year]
+    min_value=int(min_year),
+    max_value=int(max_year),
+    value=[int(min_year), int(max_year)]
 )
 
 # Filter the GDP data based on user selection
@@ -88,7 +91,7 @@ st.header('GDP Prediction')
 # Input years for future prediction
 future_years = st.slider(
     'Select future years to predict GDP:',
-    min_value=max_year + 1,
+    min_value=int(max_year) + 1,
     max_value=2050,
     value=[2025, 2030, 2040]
 )
