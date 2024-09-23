@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
@@ -68,31 +69,36 @@ filtered_gdp_df = gdp_df[
 st.subheader('GDP Data:')
 st.write(filtered_gdp_df)
 
-# Model prediksi GDP
+# Model prediksi GDP dengan Polynomial Regression
 @st.cache_data
-def train_gdp_model(gdp_df):
-    """Melatih model prediksi GDP menggunakan Linear Regression."""
+def train_gdp_model(gdp_df, degree=3):
+    """Melatih model prediksi GDP menggunakan Polynomial Regression."""
     X = gdp_df[['Year']].values
     y = gdp_df['GDP'].values
 
     # Split data menjadi training dan testing
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    # Polynomial Features untuk meningkatkan akurasi
+    poly = PolynomialFeatures(degree=degree)
+    X_train_poly = poly.fit_transform(X_train)
+    X_test_poly = poly.transform(X_test)
+
     # Buat model regresi linear
     model = LinearRegression()
-    model.fit(X_train, y_train)
+    model.fit(X_train_poly, y_train)
 
     # Prediksi pada data test
-    y_pred = model.predict(X_test)
+    y_pred = model.predict(X_test_poly)
 
     # Hitung kesalahan (Mean Squared Error)
     mse = mean_squared_error(y_test, y_pred)
 
-    return model, mse
+    return model, mse, poly
 
 # Melatih model
 if len(filtered_gdp_df) > 0:
-    model, mse = train_gdp_model(filtered_gdp_df)
+    model, mse, poly = train_gdp_model(filtered_gdp_df)
 
     # Pilih tahun untuk prediksi di masa depan
     future_years = st.multiselect(
@@ -104,7 +110,8 @@ if len(filtered_gdp_df) > 0:
     if len(future_years) > 0:
         # Prediksi GDP untuk tahun-tahun yang dipilih
         future_years_arr = np.array(future_years).reshape(-1, 1)
-        future_gdp_pred = model.predict(future_years_arr)
+        future_years_poly = poly.transform(future_years_arr)
+        future_gdp_pred = model.predict(future_years_poly)
 
         st.subheader('GDP Predictions:')
         predictions_df = pd.DataFrame({
@@ -113,12 +120,18 @@ if len(filtered_gdp_df) > 0:
         })
         st.write(predictions_df)
 
-        # Plot hasil prediksi
+        # Gabungkan data aktual dan prediksi
+        actual_data = filtered_gdp_df[['Year', 'GDP']]
+        predicted_data = predictions_df.rename(columns={'Predicted GDP': 'GDP'})
+        combined_data = pd.concat([actual_data, predicted_data])
+
+        # Plot hasil prediksi dan data aktual
         fig, ax = plt.subplots()
-        ax.plot(future_years, future_gdp_pred, label='Predicted GDP', marker='o', linestyle='--', color='b')
+        ax.plot(actual_data['Year'], actual_data['GDP'], label='Actual GDP', marker='o', color='g')
+        ax.plot(predicted_data['Year'], predicted_data['GDP'], label='Predicted GDP', marker='o', linestyle='--', color='b')
         ax.set_xlabel('Year')
         ax.set_ylabel('GDP')
-        ax.set_title(f'Predicted GDP for {", ".join(selected_countries)}')
+        ax.set_title(f'GDP for {", ".join(selected_countries)} (Actual & Predicted)')
         ax.legend()
         st.pyplot(fig)
 
