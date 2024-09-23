@@ -95,33 +95,35 @@ if len(filtered_gdp_df) > 0:
     model, mse = train_gdp_model(filtered_gdp_df)
 
     # Pilih tahun untuk prediksi di masa depan
-    future_years = st.slider(
+    future_years = st.multiselect(
         'Select future years to predict GDP:',
-        min_value=max_year + 1,
-        max_value=2050,
-        value=[2025, 2030, 2040]
+        options=[year for year in range(max_year + 1, 2051)],
+        default=[2025, 2030, 2040]
     )
 
-    # Prediksi GDP untuk tahun-tahun yang dipilih
-    future_years_arr = np.array(future_years).reshape(-1, 1)
-    future_gdp_pred = model.predict(future_years_arr)
+    if len(future_years) > 0:
+        # Prediksi GDP untuk tahun-tahun yang dipilih
+        future_years_arr = np.array(future_years).reshape(-1, 1)
+        future_gdp_pred = model.predict(future_years_arr)
 
-    st.subheader('GDP Predictions:')
-    predictions_df = pd.DataFrame({
-        'Year': future_years,
-        'Predicted GDP': future_gdp_pred
-    })
-    st.write(predictions_df)
+        st.subheader('GDP Predictions:')
+        predictions_df = pd.DataFrame({
+            'Year': future_years,
+            'Predicted GDP': future_gdp_pred
+        })
+        st.write(predictions_df)
 
-    # Plot hasil prediksi
-    fig, ax = plt.subplots()
-    ax.plot(future_years, future_gdp_pred, label='Predicted GDP', marker='o', linestyle='--', color='b')
-    ax.set_xlabel('Year')
-    ax.set_ylabel('GDP')
-    ax.set_title(f'Predicted GDP for {", ".join(selected_countries)}')
-    ax.legend()
-    st.pyplot(fig)
+        # Plot hasil prediksi
+        fig, ax = plt.subplots()
+        ax.plot(future_years, future_gdp_pred, label='Predicted GDP', marker='o', linestyle='--', color='b')
+        ax.set_xlabel('Year')
+        ax.set_ylabel('GDP')
+        ax.set_title(f'Predicted GDP for {", ".join(selected_countries)}')
+        ax.legend()
+        st.pyplot(fig)
 
-    st.write(f'Mean Squared Error of the model: {mse:.2f}')
+        st.write(f'Mean Squared Error of the model: {mse:.2f}')
+    else:
+        st.warning('Please select future years to predict.')
 else:
     st.warning('Please select countries and years to view data.')
