@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import requests  # Library untuk HTTP request
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
@@ -39,18 +40,50 @@ def get_gdp_data():
     
     return gdp_df
 
+# Fungsi untuk mengambil data suku bunga dari API SatuData
+@st.cache_data
+def get_interest_rate_data():
+    """Mengambil data suku bunga dari SatuData API."""
+    api_url = 'https://katalog.satudata.go.id/api/3/action/datastore_search'
+    params = {
+        'resource_id': '<RESOURCE_ID>',  # Ganti dengan resource ID untuk data suku bunga
+        'limit': 1000
+    }
+    
+    response = requests.get(api_url, params=params)
+    
+    if response.status_code == 200:
+        data = response.json()
+        records = data['result']['records']
+        interest_rate_df = pd.DataFrame(records)
+        
+        # Konversi tahun dan suku bunga ke tipe numerik
+        interest_rate_df['Year'] = pd.to_numeric(interest_rate_df['Year'])
+        interest_rate_df['Interest Rate'] = pd.to_numeric(interest_rate_df['Interest Rate'])
+        
+        return interest_rate_df[['Year', 'Interest Rate']]
+    else:
+        st.error("Failed to fetch interest rate data from SatuData API.")
+        return pd.DataFrame()
+
 # Memuat data GDP
 gdp_df = get_gdp_data()
+
+# Memuat data suku bunga
+interest_rate_df = get_interest_rate_data()
+
+# Gabungkan data GDP dan suku bunga berdasarkan tahun
+merged_df = pd.merge(gdp_df, interest_rate_df, on='Year', how='left')
 
 # Judul aplikasi
 st.title('GDP Prediction Dashboard :earth_americas:')
 
 # Filter berdasarkan negara dan tahun
-countries = gdp_df['Country Name'].unique()
+countries = merged_df['Country Name'].unique()
 selected_countries = st.multiselect('Select countries:', countries, ['United States', 'China'])
 
-min_year = gdp_df['Year'].min()
-max_year = gdp_df['Year'].max()
+min_year = merged_df['Year'].min()
+max_year = merged_df['Year'].max()
 
 from_year, to_year = st.slider(
     'Select the range of years:',
@@ -60,20 +93,20 @@ from_year, to_year = st.slider(
 )
 
 # Filter data berdasarkan input pengguna
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Name'].isin(selected_countries)) &
-    (gdp_df['Year'] >= from_year) &
-    (gdp_df['Year'] <= to_year)
+filtered_gdp_df = merged_df[
+    (merged_df['Country Name'].isin(selected_countries)) &
+    (merged_gdp_df['Year'] >= from_year) &
+    (filtered_gdp_df['Year'] <= to_year)
 ]
 
-st.subheader('GDP Data:')
+st.subheader('GDP Data with Interest Rates:')
 st.write(filtered_gdp_df)
 
-# Model prediksi GDP dengan Polynomial Regression
+# Model prediksi GDP dengan Polynomial Regression, menggunakan Year dan Interest Rate
 @st.cache_data
-def train_gdp_model(gdp_df, degree=3):
-    """Melatih model prediksi GDP menggunakan Polynomial Regression."""
-    X = gdp_df[['Year']].values
+def train_gdp_model_with_interest_rate(gdp_df, degree=3):
+    """Melatih model prediksi GDP menggunakan Polynomial Regression dengan faktor suku bunga."""
+    X = gdp_df[['Year', 'Interest Rate']].values  # Tambahkan suku bunga sebagai input
     y = gdp_df['GDP'].values
 
     # Split data menjadi training dan testing
@@ -98,7 +131,7 @@ def train_gdp_model(gdp_df, degree=3):
 
 # Melatih model
 if len(filtered_gdp_df) > 0:
-    model, mse, poly = train_gdp_model(filtered_gdp_df)
+    model, mse, poly = train_gdp_model_with_interest_rate(filtered_gdp_df)
 
     # Pilih tahun untuk prediksi di masa depan
     future_years = st.multiselect(
@@ -107,15 +140,22 @@ if len(filtered_gdp_df) > 0:
         default=[2025, 2030, 2040]
     )
 
-    if len(future_years) > 0:
+    # Input suku bunga untuk tahun-tahun masa depan
+    future_interest_rates = st.text_input('Enter future interest rates (comma-separated):', '3.5, 4.0, 4.5')
+
+    if len(future_years) > 0 and future_interest_rates:
         # Prediksi GDP untuk tahun-tahun yang dipilih
         future_years_arr = np.array(future_years).reshape(-1, 1)
-        future_years_poly = poly.transform(future_years_arr)
-        future_gdp_pred = model.predict(future_years_poly)
+        future_interest_rates_arr = np.array([float(x) for x in future_interest_rates.split(',')]).reshape(-1, 1)
+        future_data = np.hstack([future_years_arr, future_interest_rates_arr])
 
-        st.subheader('GDP Predictions:')
+        future_data_poly = poly.transform(future_data)
+        future_gdp_pred = model.predict(future_data_poly)
+
+        st.subheader('GDP Predictions with Interest Rates:')
         predictions_df = pd.DataFrame({
             'Year': future_years,
+            'Interest Rate': future_interest_rates_arr.flatten(),
             'Predicted GDP': future_gdp_pred
         })
         st.write(predictions_df)
@@ -137,6 +177,6 @@ if len(filtered_gdp_df) > 0:
 
         st.write(f'Mean Squared Error of the model: {mse:.2f}')
     else:
-        st.warning('Please select future years to predict.')
+        st.warning('Please select future years and enter interest rates to predict.')
 else:
     st.warning('Please select countries and years to view data.')
