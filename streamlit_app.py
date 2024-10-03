@@ -18,7 +18,7 @@ st.set_page_config(
 def get_data():
     """Load GDP and Interest Rate data from CSV files."""
     gdp_data_filename = 'data/gdp_data.csv'
-    interest_rate_filename = '/mnt/data/API_FR.INR.RINR_DS2_en_csv_v2_5728810.csv'
+    interest_rate_filename = 'data/API_FR.INR.RINR_DS2_en_csv_v2_5728810.csv'
     
     # Load GDP data
     raw_gdp_df = pd.read_csv(gdp_data_filename)
