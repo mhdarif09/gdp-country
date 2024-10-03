@@ -40,23 +40,32 @@ def get_gdp_data():
     return gdp_df
 
 # Function to load interest rate data
+# Function to load interest rate data
 @st.cache_data
 def get_interest_rate_data():
     """Load interest rate data from file."""
     interest_rate_file = 'data/API_FR.INR.RINR_DS2_en_csv_v2_5728810.csv'  # Replace with the path to your interest rate file
     raw_interest_rate_df = pd.read_csv(interest_rate_file, skiprows=4)  # Adjust skiprows based on file structure
     
+    # Check what the actual column names are
+    st.write("Interest Rate Data Columns:", raw_interest_rate_df.columns)
+    
+    # Adjust column name to match the file
     MIN_YEAR = 1960
     MAX_YEAR = 2022
     
-    # Check and rename columns if necessary
-    interest_rate_df = raw_interest_rate_df.melt(
-        id_vars=['Country Name'],  # Check the actual column name
-        value_vars=[str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        var_name='Year',
-        value_name='Interest Rate'
-    )
-    
+    # Check if 'Country Name' and the year columns exist
+    try:
+        interest_rate_df = raw_interest_rate_df.melt(
+            id_vars=['Country Name'],  # Adjust based on the actual column names
+            value_vars=[str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
+            var_name='Year',
+            value_name='Interest Rate'
+        )
+    except KeyError as e:
+        st.error(f"KeyError: {e}. Please check if the column names are correct.")
+        st.stop()
+
     # Convert year to numeric
     interest_rate_df['Year'] = pd.to_numeric(interest_rate_df['Year'])
     
@@ -64,6 +73,7 @@ def get_interest_rate_data():
     interest_rate_df = interest_rate_df.dropna(subset=['Interest Rate'])
     
     return interest_rate_df
+
 
 # Load GDP and interest rate data
 gdp_df = get_gdp_data()
