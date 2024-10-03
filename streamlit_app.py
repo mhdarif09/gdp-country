@@ -47,24 +47,34 @@ def get_interest_rate_data():
     interest_rate_file = 'data/API_FR.INR.RINR_DS2_en_csv_v2_5728810.csv'  # Replace with the path to your interest rate file
     raw_interest_rate_df = pd.read_csv(interest_rate_file, skiprows=4)  # Adjust skiprows based on file structure
     
-    # Check what the actual column names are
+    # Display the first few rows of the DataFrame for inspection
+    st.write("Interest Rate Data Preview:", raw_interest_rate_df.head())
     st.write("Interest Rate Data Columns:", raw_interest_rate_df.columns)
-    
-    # Adjust column name to match the file
+
+    # Define the range of years
     MIN_YEAR = 1960
     MAX_YEAR = 2022
     
     # Check if 'Country Name' and the year columns exist
-    try:
-        interest_rate_df = raw_interest_rate_df.melt(
-            id_vars=['Country Name'],  # Adjust based on the actual column names
-            value_vars=[str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-            var_name='Year',
-            value_name='Interest Rate'
-        )
-    except KeyError as e:
-        st.error(f"KeyError: {e}. Please check if the column names are correct.")
+    # Constructing the list of years dynamically based on the available columns
+    year_columns = [str(year) for year in range(MIN_YEAR, MAX_YEAR + 1)]
+    available_years = [col for col in raw_interest_rate_df.columns if col in year_columns]
+    
+    if 'Country Name' not in raw_interest_rate_df.columns:
+        st.error("'Country Name' column not found in the dataset.")
         st.stop()
+    
+    if not available_years:
+        st.error(f"No year columns found in the range {MIN_YEAR}-{MAX_YEAR}.")
+        st.stop()
+    
+    # Now perform the melt operation
+    interest_rate_df = raw_interest_rate_df.melt(
+        id_vars=['Country Name'],  # Adjust based on the actual column names
+        value_vars=available_years,
+        var_name='Year',
+        value_name='Interest Rate'
+    )
 
     # Convert year to numeric
     interest_rate_df['Year'] = pd.to_numeric(interest_rate_df['Year'])
@@ -73,7 +83,6 @@ def get_interest_rate_data():
     interest_rate_df = interest_rate_df.dropna(subset=['Interest Rate'])
     
     return interest_rate_df
-
 
 # Load GDP and interest rate data
 gdp_df = get_gdp_data()
