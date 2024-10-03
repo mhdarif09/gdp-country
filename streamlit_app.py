@@ -46,7 +46,7 @@ def get_interest_rate_data():
     """Mengambil data suku bunga dari SatuData API."""
     api_url = 'https://katalog.satudata.go.id/api/3/action/datastore_search'
     params = {
-        'resource_id': '<RESOURCE_ID>',  # Ganti dengan resource ID untuk data suku bunga
+        'resource_id': '7b08abd6-d923-4e7a-b046-1cf9b224c509',  # Ganti dengan resource ID untuk data suku bunga
         'limit': 1000
     }
     
